@@ -25,7 +25,7 @@ class GenerateJob < Thor
       items = ask(<<-QUESTION).split(?,).map(&:strip).map(&:to_i)
       Available migratios to generate are:
         #{migrations.map.with_index { |m, i| "#{i+1}. #{m[:description]}" }.join("\n  ")}
-      Choose migration to generate (use comma to run several ones): (1-6):
+      Choose migration to generate (use comma to run several ones): (1-#{migrations.count}):
       QUESTION
 
       names = {
