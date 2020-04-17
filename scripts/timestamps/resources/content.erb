@@ -1,4 +1,4 @@
-class TimestampsFor##{tablename.camelcase} < ActiveRecord::Migration[5.1]
+class TimestampsFor##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
   def up
     create_or_replace_touch_functions_and_triggers
   end
