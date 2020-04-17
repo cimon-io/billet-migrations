@@ -1,0 +1,6 @@
+parent_table = ask('Set parent table which should contains count column: ').strip.presence || say("Table name can't be blank.") || break
+child_table = ask('Set a table with foreign key which one count of records should be calculated: ').strip.presence || say("Table name can't be blank.") || break
+counter_column = ask("Set counter column (by default is '#{child_table}_count'): ").strip.presence || "#{child_table}_count"
+foreign_column = ask("Set foreign column (by default is '#{parent_table.singularize}_id'): ").strip.presence || "#{child_table.singularize}_id"
+
+create_file "db/migrate/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}_add_counter_cache_to_#{parent_table}_for_#{child_table}.rb", "<%= content %>"

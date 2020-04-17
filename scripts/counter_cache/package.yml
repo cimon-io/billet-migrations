@@ -1,0 +1,5 @@
+:name: counter_cache
+:description: Add counter cache column.
+:script: generator.erb
+:files:
+  :content: resources/content.erb
