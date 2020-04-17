@@ -1,0 +1,6 @@
+tablename = ask 'Which table should be updated with timestamps?'
+if tablename.blank?
+  say "Table name can't be blank."
+  break
+end
+create_file "db/migrate/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}_timestamps_for_#{tablename}.rb", "<%= content %>"

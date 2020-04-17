@@ -1,0 +1,74 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'thor'
+require 'rufo'
+require 'yaml'
+require 'ostruct'
+require 'ostruct'
+
+class GenerateJob < Thor
+  include Thor::Actions
+
+  MAINFILE = '.billet.rb'
+
+  desc 'UID migraiton', "generate UID migration script"
+  def billet
+    migrations = Dir
+      .entries('./scripts')
+      .select { |entry| File.directory?(File.join('scripts', entry)) && !(entry =='.' || entry == '..') }
+      .map { |folder| YAML.load_file(File.join('scripts', folder, 'package.yml')) }
+
+    remove_file MAINFILE
+    create_file MAINFILE, ''
+    append_to_file MAINFILE, <<~TEXT
+      items = ask(<<-QUESTION).split(?,).map(&:strip).map(&:to_i)
+      Available migratios to generate are:
+        #{migrations.map.with_index { |m, i| "#{i+1}. #{m[:description]}" }.join("\n  ")}
+      Choose migration to generate (use comma to run several ones): (1-6):
+      QUESTION
+
+      names = {
+        #{migrations.map.with_index { |m, i| "#{i+1} => :#{m[:name]}" }.join(",\n  ")}
+      }
+    TEXT
+
+    contents = migrations.map do |m|
+      {
+        name: m[:name],
+        content: ERB.new(File.open(File.join('scripts', m[:name].to_s, m[:script].to_s), 'rb', encoding: 'utf-8', &:read)).result(OpenStruct.new(
+          (m[:files] || {}).transform_values! do |filename|
+            ERB.new(
+                File.open(File.join('scripts', m[:name], filename), 'rb', encoding: 'utf-8', &:read)
+              ).result
+               .gsub("#", "\\#")
+               .gsub("\\#\\#", "#")
+               .gsub('"', '\"')
+               .gsub(/'/) {|c| "\\\\'"}
+               .gsub("\n", "\\n")
+          end
+        ).instance_eval { binding }).gsub(/\n*\s*\z/, "")
+      }
+    end
+
+    append_to_file MAINFILE, "\nitems.each do |i|\n"
+    append_to_file MAINFILE, "  case names[i]\n"
+    contents.each do |c|
+      append_to_file MAINFILE, <<~TEXT
+        when :#{c[:name]} then
+          begin
+            #{c[:content].gsub("\n", "\n      ")}
+          end while false
+      TEXT
+    end
+    append_to_file MAINFILE, <<~TEXT
+        else
+          puts 'Nothing to generate'
+        end
+      end
+    TEXT
+    Rufo::Command.run [MAINFILE]
+  end
+end
+
+GenerateJob.start(ARGV)

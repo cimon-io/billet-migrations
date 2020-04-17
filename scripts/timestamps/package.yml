@@ -1,0 +1,5 @@
+:name: timestamps
+:description: Timestamps for created_at/updated_at fields.
+:script: generator.erb
+:files:
+  :content: resources/content.erb
