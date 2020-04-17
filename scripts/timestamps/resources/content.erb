@@ -1,10 +1,8 @@
 class TimestampsFor##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
   def up
-    create_or_replace_touch_functions_and_triggers
-  end
-
-  def down
-    drop_touch_functions_and_triggers
+    create_or_replace_touch_functions_and_triggers_on(:insert)
+    create_or_replace_touch_functions_and_triggers_on(:update)
+    create_or_replace_touch_functions_and_triggers_on(:destroy)
   end
 
   private
@@ -13,42 +11,28 @@ class TimestampsFor##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::V
     %w[##{tablename}].sort
   end
 
-  def create_touch_trigger_for(table_name)
-    execute %(
-      CREATE TRIGGER touch_dependent_tables_on_destroy BEFORE DELETE ON #{table_name}
-      FOR EACH ROW EXECUTE PROCEDURE touch_for_#{table_name}_on_destroy();
-    )
-  end
-
-  def drop_touch_functions_and_triggers
-    table_names.each do |table_name|
-      execute %(
-        DROP TRIGGER IF EXISTS touch_dependent_tables_on_destroy ON #{table_name};
-        DROP FUNCTION IF EXISTS touch_for_#{table_name}_on_destroy();
-      )
-    end
-  end
-
-  def create_or_replace_touch_functions_and_triggers
-    drop_touch_functions_and_triggers
-
+  def create_or_replace_touch_functions_and_triggers_on(action)
     table_names.each do |table_name|
       options = touch_options_for(table_name)
-      next if options.none?
+      # next if options.none?
 
-      execute %(
-        CREATE OR REPLACE FUNCTION touch_for_#{table_name}_on_destroy() RETURNS TRIGGER AS $$
+      execute %{
+        CREATE OR REPLACE FUNCTION touch_for_#{table_name}_on_#{action}() RETURNS TRIGGER AS $$
         BEGIN#{dynamic_touch_query(options)}
-          RETURN OLD;
-          EXCEPTION
-            WHEN foreign_key_violation THEN
-              RETURN OLD;
+          #{"SELECT CURRENT_TIMESTAMP INTO NEW.updated_at;\n          " if action == :update}RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-      )
+      }
 
-      create_touch_trigger_for(table_name)
+      create_touch_trigger_for(table_name, action)
     end
+  end
+
+  def create_touch_trigger_for(table_name, action)
+    execute %{
+      CREATE TRIGGER touch_dependent_tables_on_#{action} BEFORE #{action.upcase} ON #{table_name}
+      FOR EACH ROW EXECUTE PROCEDURE touch_for_#{table_name}_on_#{action}();
+    }
   end
 
   def touch_options_for(table_name)
@@ -59,7 +43,7 @@ class TimestampsFor##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::V
         ON tc.constraint_name = kcu.constraint_name
         JOIN information_schema.constraint_column_usage AS ccu
         ON ccu.constraint_name = tc.constraint_name
-      WHERE constraint_type = "FOREIGN KEY" AND tc.table_name = '#{table_name}'
+      WHERE constraint_type = 'FOREIGN KEY' AND tc.table_name = '#{table_name}'
       ORDER BY ccu.table_name
     )
   end
@@ -67,7 +51,7 @@ class TimestampsFor##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::V
   def dynamic_touch_query(options)
     options.inject('') do |query, opts|
       query << %(
-          UPDATE #{opts['foreign_table_name']} SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.#{opts['column_name']};)
+          UPDATE #{opts['foreign_table_name']} SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.#{opts['column_name']};)
     end
   end
 end
