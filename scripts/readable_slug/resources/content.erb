@@ -1,0 +1,108 @@
+class AddHumanReadableSlugGenerationTo##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
+  VOWELS = %w[A E I O U Y].freeze
+  CONSONANTS = %w[B C D F G H J K L M N P Q R S T V W X Z].freeze
+  SEED = ##{38.times.map { |i| rand(10) }.join}
+
+  def up
+    add_tables_and_columns
+    create_static_sql_functions
+
+    execute(
+      <<~SQL
+        CREATE SEQUENCE ##{tablename}_daily_seq OWNED BY prefix_sequence_list.key;
+
+        CREATE OR REPLACE FUNCTION human_slug_for_##{tablename}() RETURNS TRIGGER AS $$
+        BEGIN
+          SELECT generate_slug('##{tablename}'::regclass, '##{slug_prefix}', '##{tablename}_daily_seq') INTO NEW.slug;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        CREATE TRIGGER generate_human_slug_for_##{tablename}_on_insert BEFORE INSERT ON ##{tablename}
+        FOR EACH ROW EXECUTE PROCEDURE human_slug_for_##{tablename}();
+      SQL
+    )
+
+    generate_prefixes
+    update_existing_records
+    update_columns
+  end
+
+  private
+
+  def add_tables_and_columns
+    create_table : do |t|
+      t.date :key, null: false
+      t.string :##{tablename}, null: false
+      t.boolean :##{tablename}_sequence_reseted, null: false, default: false
+    end
+
+    add_index :prefix_sequence_list_for_##{tablename}, :key, unique: true
+    add_column :##{tablename}, :slug, :string
+  end
+
+  def update_columns
+    change_column_null :##{tablename}, :slug, false
+    add_index :##{tablename}, :slug, unique: true
+  end
+
+  def generate_prefixes
+    codes = VOWELS.each_with_object([]) do |a, obj|
+      CONSONANTS.each { |b| CONSONANTS.each { |c| obj.push("#{b}#{a}#{c}") } }
+    end
+
+    start_date = Date.yesterday
+
+    values = codes.shuffle(random: Random.new(SEED)).map do |code|
+      start_date = start_date.tomorrow
+      %(('#{start_date}', '#{code}'))
+    end
+
+    execute(
+      <<~SQL
+        INSERT INTO prefix_sequence_list_for_##{tablename} ("key", "##{tablename}") VALUES #{values.join(', ')};
+      SQL
+    )
+  end
+
+  def update_existing_records
+    execute(
+      <<~SQL
+        UPDATE ##{tablename} SET slug = CONCAT('##{slug_prefix}-AAA-', id) WHERE slug IS NULL;
+      SQL
+    )
+  end
+
+  def create_static_sql_functions
+    execute(
+      <<~SQL
+        CREATE OR REPLACE FUNCTION generate_slug(table_name regclass, prefix TEXT, seq_name TEXT) RETURNS TEXT AS $$
+        DECLARE
+          daily_code TEXT;
+        BEGIN
+          SELECT fetch_daily_code(table_name, seq_name) INTO daily_code;
+
+          RETURN CONCAT_WS('-', prefix, daily_code, nextval(seq_name));
+        END;
+        $$ LANGUAGE plpgsql;
+
+        CREATE OR REPLACE FUNCTION fetch_daily_code(table_name regclass, seq_name TEXT) RETURNS TEXT AS $$
+        DECLARE
+          prefix_sequence_list_id prefix_sequence_list.id%TYPE;
+          daily_code TEXT;
+          used BOOLEAN;
+        BEGIN
+          EXECUTE format('SELECT sl.id, sl.%s, sl.%s_sequence_reseted FROM prefix_sequence_list AS sl WHERE sl.key = now()::date LIMIT 1;', table_name, table_name) INTO prefix_sequence_list_id, daily_code, used;
+
+          IF NOT used THEN
+            EXECUTE format('UPDATE prefix_sequence_list AS sl SET %s_sequence_reseted = TRUE WHERE sl.id = %s;', table_name, prefix_sequence_list_id);
+            EXECUTE format('ALTER SEQUENCE %s RESTART WITH 1;', seq_name);
+          END IF;
+
+          RETURN daily_code;
+        END;
+        $$ LANGUAGE plpgsql;
+      SQL
+    )
+  end
+end
