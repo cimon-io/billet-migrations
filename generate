@@ -22,15 +22,11 @@ class GenerateJob < Thor
     remove_file MAINFILE
     create_file MAINFILE, ''
     append_to_file MAINFILE, <<~TEXT
-      items = ask(<<-QUESTION).split(?,).map(&:strip).map(&:to_i)
+      items = ask(<<-QUESTION).split(?,).map(&:strip).map(&:to_i).each do |i|
       Available migratios to generate are:
         #{migrations.map.with_index { |m, i| "#{i+1}. #{m[:description]}" }.join("\n  ")}
       Choose migration to generate (use comma to run several ones): (1-#{migrations.count}):
       QUESTION
-
-      names = {
-        #{migrations.map.with_index { |m, i| "#{i+1} => :#{m[:name]}" }.join(",\n  ")}
-      }
     TEXT
 
     contents = migrations.map do |m|
@@ -51,13 +47,12 @@ class GenerateJob < Thor
       }
     end
 
-    append_to_file MAINFILE, "\nitems.each do |i|\n"
-    append_to_file MAINFILE, "  case names[i]\n"
+    append_to_file MAINFILE, "  case ({#{migrations.map.with_index { |m, i| "#{i+1} => :#{m[:name]}" }.join(", ")}})[i]\n"
     contents.each do |c|
       append_to_file MAINFILE, <<~TEXT
         when :#{c[:name]} then
           begin
-            #{c[:content].gsub("\n", "\n      ")}
+            #{c[:content]}
           end while false
       TEXT
     end
