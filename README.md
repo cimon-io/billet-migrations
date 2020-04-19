@@ -2,6 +2,14 @@
 
 Standart migrations of [billet](https://github.com/cimon-io/billet) application which is able to be reused many times.
 
+To add migration to your rails project, run:
+
+```
+bin/rails app:template LOCATION=https://raw.githubusercontent.com/cimon-io/billet-migrations/master/.billet.rb
+```
+
+And follow instructions.
+
 # Available migrations
 
 ## Counter cache
