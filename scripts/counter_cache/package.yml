@@ -2,4 +2,4 @@
 :description: Add counter cache column.
 :script: generator.erb
 :files:
-  :content: resources/content.erb
+  - 'content.erb'

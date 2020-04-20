@@ -12,7 +12,7 @@ class GenerateJob < Thor
 
   MAINFILE = '.billet.rb'
 
-  desc 'UID migraiton', "generate UID migration script"
+  desc 'generate rails template', "generate rails template from several ones"
   def billet
     migrations = Dir
       .entries('./scripts')
@@ -33,16 +33,19 @@ class GenerateJob < Thor
       {
         name: m[:name],
         content: ERB.new(File.open(File.join('scripts', m[:name].to_s, m[:script].to_s), 'rb', encoding: 'utf-8', &:read)).result(OpenStruct.new(
-          (m[:files] || {}).transform_values! do |filename|
-            ERB.new(
-                File.open(File.join('scripts', m[:name], filename), 'rb', encoding: 'utf-8', &:read)
-              ).result
-               .gsub("#", "\\#")
-               .gsub("\\#\\#", "#")
-               .gsub('"', '\"')
-               .gsub(/'/) {|c| "\\\\'"}
-               .gsub("\n", "\\n")
-          end
+          files: (m[:files] || []).map do |filename|
+            [
+              filename,
+              ERB.new(
+                  File.open(File.join('scripts', m[:name], 'resources', filename), 'rb', encoding: 'utf-8', &:read)
+                ).result
+                .gsub("#", "\\#")
+                .gsub("\\#\\#", "#")
+                .gsub('"', '\"')
+                .gsub(/'/) {|c| "\\\\'"}
+                .gsub("\n", "\\n")
+            ]
+          end.to_h
         ).instance_eval { binding }).gsub(/\n*\s*\z/, "")
       }
     end
