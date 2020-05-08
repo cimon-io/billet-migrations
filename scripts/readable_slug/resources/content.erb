@@ -31,7 +31,7 @@ class AddHumanReadableSlugGenerationTo##{tablename.camelcase} < ActiveRecord::Mi
   private
 
   def add_tables_and_columns
-    create_table : do |t|
+    create_table :prefix_sequence_list do |t|
       t.date :key, null: false
       t.string :##{tablename}, null: false
       t.boolean :##{tablename}_sequence_reseted, null: false, default: false
