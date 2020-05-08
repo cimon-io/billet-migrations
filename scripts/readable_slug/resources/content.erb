@@ -33,9 +33,11 @@ class AddHumanReadableSlugGenerationTo##{tablename.camelcase} < ActiveRecord::Mi
   def add_tables_and_columns
     create_table :prefix_sequence_list do |t|
       t.date :key, null: false
-      t.string :##{tablename}, null: false
+      t.string :sequence, null: false
       t.boolean :##{tablename}_sequence_reseted, null: false, default: false
     end
+    # or add column if table already exists
+    # add_column :prefix_sequence_list, :##{tablename}_sequence_reseted, :boolean, null: false, default: false
 
     add_index :prefix_sequence_list_for_##{tablename}, :key, unique: true
     add_column :##{tablename}, :slug, :string
@@ -92,7 +94,7 @@ class AddHumanReadableSlugGenerationTo##{tablename.camelcase} < ActiveRecord::Mi
           daily_code TEXT;
           used BOOLEAN;
         BEGIN
-          EXECUTE format('SELECT sl.id, sl.%s, sl.%s_sequence_reseted FROM prefix_sequence_list AS sl WHERE sl.key = now()::date LIMIT 1;', table_name, table_name) INTO prefix_sequence_list_id, daily_code, used;
+          EXECUTE format('SELECT sl.id, sl.sequence, sl.%s_sequence_reseted FROM prefix_sequence_list AS sl WHERE sl.key = now()::date LIMIT 1;', table_name) INTO prefix_sequence_list_id, daily_code, used;
 
           IF NOT used THEN
             EXECUTE format('UPDATE prefix_sequence_list AS sl SET %s_sequence_reseted = TRUE WHERE sl.id = %s;', table_name, prefix_sequence_list_id);
