@@ -2,7 +2,7 @@ class TimestampsFor##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::V
   def up
     create_or_replace_touch_functions_and_triggers_on(:insert)
     create_or_replace_touch_functions_and_triggers_on(:update)
-    create_or_replace_touch_functions_and_triggers_on(:destroy)
+    create_or_replace_touch_functions_and_triggers_on(:delete)
   end
 
   private
@@ -19,7 +19,7 @@ class TimestampsFor##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::V
       execute %{
         CREATE OR REPLACE FUNCTION touch_for_#{table_name}_on_#{action}() RETURNS TRIGGER AS $$
         BEGIN#{dynamic_touch_query(options)}
-          #{"SELECT CURRENT_TIMESTAMP INTO NEW.updated_at;\n          " if action == :update}RETURN NEW;
+          #{"SELECT CURRENT_TIMESTAMP INTO NEW.updated_at;\n          " if action == :update}RETURN #{action == :delete ? 'OLD' : 'NEW'};
         END;
         $$ LANGUAGE plpgsql;
       }
