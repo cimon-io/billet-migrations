@@ -1,4 +1,5 @@
+is_append = ['n', 'no'].include?(ask('Is this first time whene you add slug to this project? Y/n').strip.presence.downcase)
 tablename = ask('Which table should have readable slug?').strip.presence || say("Table name can't be blank.") || break
 slug_prefix = ask('Choose slug prefix (a couple of letters length is preferred):') || say("Slug prefix can't be blank") || break
 
-create_file "db/migrate/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}_add_human_readable_slug_generation_to_#{tablename}.rb", "<%= files['content.erb'] %>"
+create_file "db/migrate/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}_add_human_readable_slug_generation_to_#{tablename}.rb", (is_append ? "<%= files['append.erb'] %>" : "<%= files['new.erb'] %>")

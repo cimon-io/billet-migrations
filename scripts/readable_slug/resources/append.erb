@@ -1,0 +1,28 @@
+class AddHumanReadableSlugGenerationTo##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
+  def up
+    add_column :prefix_sequence_list, :##{tablename}_sequence_reseted, :boolean, default: false
+    change_column :##{tablename}, :slug, :string
+
+    execute(
+      <<~SQL
+        CREATE SEQUENCE ##{tablename}_daily_seq OWNED BY prefix_sequence_list.key;
+
+        CREATE OR REPLACE FUNCTION human_slug_for_##{tablename}() RETURNS TRIGGER AS $$
+        BEGIN
+          SELECT generate_slug('##{tablename}'::regclass, 'CC', '##{tablename}_daily_seq') INTO NEW.slug;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        CREATE TRIGGER generate_human_slug_for_##{tablename}_on_insert BEFORE INSERT ON ##{tablename}
+        FOR EACH ROW EXECUTE PROCEDURE human_slug_for_##{tablename}();
+      SQL
+    )
+
+    execute(
+      <<~SQL
+        UPDATE credit_cards SET slug = CONCAT('##{slug_prefix}-AAA-', id);
+      SQL
+    )
+  end
+end

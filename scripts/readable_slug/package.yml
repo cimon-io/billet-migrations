@@ -2,4 +2,5 @@
 :description: Add human readable slug generation
 :script: generator.erb
 :files:
-  - 'content.erb'
+  - 'append.erb'
+  - 'new.erb'
