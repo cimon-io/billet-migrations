@@ -21,7 +21,7 @@ class AddHumanReadableSlugGenerationTo##{tablename.camelcase} < ActiveRecord::Mi
 
     execute(
       <<~SQL
-        UPDATE credit_cards SET slug = CONCAT('##{slug_prefix}-AAA-', id);
+        UPDATE ##{tablename} SET slug = CONCAT('##{slug_prefix}-AAA-', id);
       SQL
     )
 
