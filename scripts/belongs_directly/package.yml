@@ -1,0 +1,5 @@
+:name: belongs_directly
+:description: Add foreign key to calculate it through join table.
+:script: generator.erb
+:files:
+  - 'content.erb'

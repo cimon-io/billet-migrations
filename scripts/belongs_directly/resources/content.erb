@@ -1,0 +1,19 @@
+class BelongsDirectlyTo##{grandpa_table.camelcase}For##{child_table.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
+  def change
+    add_reference :##{child_table}, :##{grandpa_table.singularize}, index: true
+    execute <<-SQL
+      CREATE FUNCTION ##{child_table}_belongs_directly_to_##{grandpa_table}() RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+        BEGIN
+          SELECT ##{new_foreign_column} FROM ##{parent_table} WHERE ##{parent_table}.id = NEW.##{parent_foreign_column} INTO NEW.##{new_foreign_column};
+
+          RETURN NEW;
+        END;
+        $$;
+
+      CREATE TRIGGER _##{(rand(50) + 50).to_s.rjust(3, ?0)}_bdt_##{grandpa_table.singularize}_i BEFORE INSERT ON ##{child_table} FOR EACH ROW EXECUTE PROCEDURE ##{child_table}_belongs_directly_to_##{grandpa_table}();
+      CREATE TRIGGER _##{(rand(50) + 50).to_s.rjust(3, ?0)}_bdt_##{grandpa_table.singularize}_u BEFORE UPDATE OF ##{parent_foreign_column} ON ##{child_table} FOR EACH ROW EXECUTE PROCEDURE ##{child_table}_belongs_directly_to_##{grandpa_table}();
+    SQL
+  end
+end

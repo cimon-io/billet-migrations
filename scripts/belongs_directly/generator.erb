@@ -1,0 +1,7 @@
+child_table = ask('Current table name with new foreign key: ').strip.presence || say("Table name can't be blank.") || break
+parent_table = ask('Set parent table which should contains foreign key: ').strip.presence || say("Table name can't be blank.") || break
+grandpa_table = ask('Set grandpa table name: ').strip.presence || say("Table name can't be blank.") || break
+parent_foreign_column = ask("Column name to join parent table (by default is '#{parent_table.singularize}_id'): ").strip.presence || "#{parent_table.singularize}_id"
+new_foreign_column = ask("Set new foreign column name (by default is '#{grandpa_table.singularize}_id'): ").strip.presence || "#{grandpa_table.singularize}_id"
+
+create_file "db/migrate/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}_belongs_direcly_to_#{grandpa_table}_for_#{child_table}.rb", "<%= files['content.erb'] %>"

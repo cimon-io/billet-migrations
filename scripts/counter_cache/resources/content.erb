@@ -1,7 +1,9 @@
-class AddСounterСacheTo##{parent_table.camelcase}For##{child_table.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
+class AddCounterСacheTo##{parent_table.camelcase}For##{child_table.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
   def change
     counter_trigger(parent_table: :##{parent_table}, child_table: :##{child_table}, counter_column: :##{counter_column}, foreign_column: :##{foreign_column})
   end
+
+  private
 
   def counter_trigger(parent_table:, child_table:, counter_column:, foreign_column:)
     function_name = "update_#{parent_table}_#{child_table}_counter"
