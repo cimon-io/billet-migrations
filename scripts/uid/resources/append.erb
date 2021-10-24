@@ -1,0 +1,5 @@
+class AddHumanReadableSlugGenerationTo##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
+  def up
+    add_column :##{tablename}, :##{field_name}, :string, default: -> { 'generate_uid(36)' }
+  end
+end

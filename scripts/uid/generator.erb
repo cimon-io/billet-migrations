@@ -1,0 +1,5 @@
+is_append = ['n', 'no'].include?(ask('Is this first time whene you add uid to the project? Y/n').strip.presence.downcase)
+tablename = ask('Which table should have uid field?').strip.presence || say("Table name can't be empty.") || break
+field_name = ask('Field name:').strip.presence || say("Field name can't be empty.") || break
+
+create_file "db/migrate/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}_add_field_#{field_name.underscore.gsub(/[^a-zA-Z]/, '_')}_to_#{tablename}.rb", (is_append ? "<%= files['append.erb'] %>" : "<%= files['new.erb'] %>")

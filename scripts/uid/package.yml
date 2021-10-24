@@ -1,0 +1,6 @@
+:name: uid
+:description: Add field which contains generated uid
+:script: generator.erb
+:files:
+  - 'append.erb'
+  - 'new.erb'

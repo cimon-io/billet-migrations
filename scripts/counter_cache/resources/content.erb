@@ -1,5 +1,5 @@
 class AddCounterСacheTo##{parent_table.camelcase}For##{child_table.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
-  def change
+  def up
     counter_trigger(parent_table: :##{parent_table}, child_table: :##{child_table}, counter_column: :##{counter_column}, foreign_column: :##{foreign_column})
   end
 

@@ -1,0 +1,25 @@
+class AddHumanReadableSlugGenerationTo##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
+  def up
+    execute 'create extension if not exists pgcrypto;'
+    execute <<-SQL.squish
+      CREATE OR REPLACE FUNCTION generate_uid(i integer) RETURNS text AS $$
+      BEGIN
+        RETURN
+        substring(lower(concat(
+          encode(digest(concat(cast(now() AS text), gen_random_bytes(50)::text), 'sha512'), 'hex'),
+          encode(digest(concat(cast(now() AS text), gen_random_bytes(50)::text), 'sha512'), 'hex')
+        )) from 0 for i);
+      END;
+      $$ LANGUAGE plpgsql;
+    SQL
+
+    add_column :##{tablename}, :##{field_name}, :string, default: -> { 'generate_uid(36)' }
+  end
+
+  def down
+    execute %{
+      DROP FUNCTION IF EXISTS generate_uid(integer);
+      DROP EXTENSION IF EXISTS pgcrypto;
+    }
+  end
+end
