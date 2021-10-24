@@ -1,5 +1,5 @@
 class BelongsDirectlyTo##{grandpa_table.camelcase}For##{child_table.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
-  def change
+  def up
     add_reference :##{child_table}, :##{grandpa_table.singularize}, index: true
     execute <<-SQL
       CREATE FUNCTION ##{child_table}_belongs_directly_to_##{grandpa_table}() RETURNS trigger
