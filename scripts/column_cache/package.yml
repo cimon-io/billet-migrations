@@ -1,0 +1,5 @@
+:name: column_cache
+:description: Add cache value of column in another table.
+:script: generator.erb
+:files:
+  - 'content.erb'

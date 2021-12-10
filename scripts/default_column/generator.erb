@@ -1,0 +1,8 @@
+parent_table = ask('Set parent table which should contains count column: ').strip.presence || say("Table name can't be blank.") || break
+child_table = ask('Set a table with foreign key which one count of records should be calculated: ').strip.presence || say("Table name can't be blank.") || break
+foreign_column = ask("Set foreign column (by default is '#{parent_table.singularize}_id'): ").strip.presence || "#{parent_table.singularize}_id"
+child_column = ask("Set child column where value will be fetched: ").strip.presence || say("Child column can't be empty or generated from other fields") || break
+parent_column = ask("Set parent column where value will be cached ('#{child_column}' by default): ").strip.presence || "#{child_column}"
+child_default_column = ask("Set child boolean column where TRUE means that this is default value: ('is_default' by deafult)").strip.presence || "is_default"
+
+create_file "db/migrate/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}_add_default_column_#{parent_table.underscore}_#{parent_column.underscore}.rb", "<%= files['content.erb'] %>"

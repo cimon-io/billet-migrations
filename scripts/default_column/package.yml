@@ -1,0 +1,5 @@
+:name: default_column
+:description: Add column with default value from nested table where is_default = true
+:script: generator.erb
+:files:
+  - 'content.erb'

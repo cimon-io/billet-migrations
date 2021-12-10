@@ -1,0 +1,5 @@
+:name: sum_cache
+:description: Add cache column with sum by a column of nested records.
+:script: generator.erb
+:files:
+  - 'content.erb'

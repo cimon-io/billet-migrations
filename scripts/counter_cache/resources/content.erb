@@ -32,9 +32,9 @@ class AddCounterСacheTo##{parent_table.camelcase}For##{child_table.camelcase} <
       END;
       $$ LANGUAGE plpgsql;
 
-      CREATE TRIGGER _001_#{function_name}_on_insert AFTER INSERT ON #{child_table} FOR EACH ROW EXECUTE PROCEDURE #{function_name}_on_insert();
-      CREATE TRIGGER _001_#{function_name}_on_update AFTER UPDATE ON #{child_table} FOR EACH ROW EXECUTE PROCEDURE #{function_name}_on_update();
-      CREATE TRIGGER _001_#{function_name}_on_delete AFTER DELETE ON #{child_table} FOR EACH ROW EXECUTE PROCEDURE #{function_name}_on_delete();
+      CREATE TRIGGER _##{(rand(10)+10).to_s.rjust(3, ?0)}_#{function_name}_on_insert AFTER INSERT ON #{child_table} FOR EACH ROW EXECUTE PROCEDURE #{function_name}_on_insert();
+      CREATE TRIGGER _##{(rand(10)+10).to_s.rjust(3, ?0)}_#{function_name}_on_update AFTER UPDATE ON #{child_table} FOR EACH ROW EXECUTE PROCEDURE #{function_name}_on_update();
+      CREATE TRIGGER _##{(rand(10)+10).to_s.rjust(3, ?0)}_#{function_name}_on_delete AFTER DELETE ON #{child_table} FOR EACH ROW EXECUTE PROCEDURE #{function_name}_on_delete();
     }
   end
 end

@@ -30,7 +30,7 @@ class TimestampsFor##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::V
 
   def create_touch_trigger_for(table_name, action)
     execute %{
-      CREATE TRIGGER touch_dependent_tables_on_#{action} BEFORE #{action.upcase} ON #{table_name}
+      CREATE TRIGGER _##{(rand(10)+10).to_s.rjust(3, ?0)}_touch_deps_on_#{action} BEFORE #{action.upcase} ON #{table_name}
       FOR EACH ROW EXECUTE PROCEDURE touch_for_#{table_name}_on_#{action}();
     }
   end

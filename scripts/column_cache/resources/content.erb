@@ -1,0 +1,44 @@
+class CacheColumn##{parent_column.camelcase}From##{parent_table.camelcase}To##{child_table.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
+  def up
+    cache_column_trigger(parent_table: '##{parent_table}', child_table: '##{child_table}', columns_map: { '##{parent_column}' => '##{child_column}' }, foreign_column: '##{foreign_column}')
+  end
+
+  private
+
+  def cache_column_trigger(parent_table:, child_table:, columns_map: {}, foreign_column:, primary_column: :id, function_name: nil)
+    parent_columns = columns_map.to_a.map(&:first)
+    child_columns = columns_map.to_a.map(&:second)
+
+    function_name = "cache_#{child_table[0..10]}_#{parent_table[0..10]}_cols" if function_name.nil?
+
+    execute %{
+      CREATE OR REPLACE FUNCTION #{function_name}_child() RETURNS TRIGGER AS $$
+      BEGIN
+        SELECT #{parent_columns.join(', ')} INTO #{child_columns.map { |i| "NEW.#{i}" }.join(', ')} FROM #{parent_table} WHERE #{parent_table}.#{primary_column} = NEW.#{foreign_column} LIMIT 1;
+
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      CREATE OR REPLACE FUNCTION #{function_name}_parent() RETURNS TRIGGER AS $$
+      BEGIN
+        UPDATE #{child_table} SET #{columns_map.map { |i,j| "#{i} = NEW.#{j}" }.join(', ')} WHERE #{child_table}.#{foreign_column} = NEW.#{primary_column};
+
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      CREATE TRIGGER _##{(rand(10)+10).to_s.rjust(3, ?0)}_#{function_name}_on_i BEFORE INSERT ON #{child_table}
+        FOR EACH ROW
+        EXECUTE PROCEDURE #{function_name}_child();
+
+      CREATE TRIGGER _##{(rand(10)+10).to_s.rjust(3, ?0)}_#{function_name}_on_u BEFORE UPDATE ON #{child_table}
+        FOR EACH ROW WHEN (#{child_columns.map { |i| "(NEW.#{i} <> OLD.#{i})" }.join(' AND ')} AND (NEW.#{foreign_column} IS NOT NULL))
+        EXECUTE PROCEDURE #{function_name}_child();
+
+      CREATE TRIGGER _##{(rand(10)+10).to_s.rjust(3, ?0)}_#{function_name}_on_u BEFORE UPDATE ON #{parent_table}
+        FOR EACH ROW WHEN (#{parent_columns.map { |i| "(NEW.#{i} <> OLD.#{i})" }.join(' AND ')})
+        EXECUTE PROCEDURE #{function_name}_parent();
+    }
+  end
+end

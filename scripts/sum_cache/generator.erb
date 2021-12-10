@@ -1,0 +1,7 @@
+parent_table = ask('Set parent table which should contains count column: ').strip.presence || say("Table name can't be blank.") || break
+child_table = ask('Set a table with foreign key which one count of records should be calculated: ').strip.presence || say("Table name can't be blank.") || break
+sum_column = ask("Set column which should contains sum (by default is '#{child_table.underscore}_sum'): ").strip.presence || "#{child_table.underscore}_sum"
+child_column = ask("Set column of nested table which should be sum up: ").strip.presence || break
+foreign_column = ask("Set foreign column (by default is '#{parent_table.singularize.underscore}_id'): ").strip.presence || "#{parent_table.singularize.underscore}_id"
+
+create_file "db/migrate/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}_add_sum_cache_to_#{parent_table.underscore}_for_#{child_table.underscore}_#{sum_column.underscore}.rb", "<%= files['content.erb'] %>"

@@ -1,0 +1,86 @@
+class AddDefaultColumn##{parent_table.camelcase}##{parent_column.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
+  def up
+    add_column '##{parent_table}', '##{parent_column}', :string, null: false
+
+    add_column '##{child_table}', '##{child_column}', :string, null: false
+    add_column '##{child_table}', '##{child_default_column}', :boolean, null: false, default: false, comment: 'Can be TRUE only once per ##{child_table}.##{foreign_column}'
+
+    add_default_column_triggers(
+      parent_table_name: '##{parent_table}',
+      foreign_column: '##{foreign_column}',
+      table_name: '##{child_table}',
+      parent_column_name: '##{parent_column}',
+      column_name: '##{child_column}',
+      boolean_column_name: '##{child_default_column}'
+    )
+  end
+
+  private
+
+  def add_default_column_triggers(parent_table_name:, foreign_column:, table_name:, parent_column_name:, column_name:, boolean_column_name:)
+    function_name1 = "sync_#{column_name[0..15]}_afr_#{parent_table_name[0..15]}"
+    function_name2 = "sync_#{parent_table_name[0..15]}1_#{parent_column_name[0..15]}"
+    function_name3 = "sync_#{parent_table_name[0..15]}_#{table_name[0..15]}"
+
+    execute <<~SQL
+      CREATE FUNCTION sync_#{function_name1}() RETURNS trigger LANGUAGE plpgsql AS $$
+        DECLARE existing_record #{table_name}%ROWTYPE;
+        BEGIN
+          IF NEW.#{parent_column_name} IS NULL THEN RETURN NEW; END IF;
+
+          IF OLD IS NOT NULL AND OLD.#{parent_column_name} = NEW.#{parent_column_name} THEN RETURN NEW; END IF;
+
+          SELECT id, #{foreign_column}, #{boolean_column_name} INTO existing_record FROM #{table_name} WHERE #{column_name} = NEW.#{parent_column_name} LIMIT 1;
+
+          IF existing_record.#{foreign_column} IS NULL THEN
+            INSERT INTO #{table_name}(#{foreign_column}, #{column_name}, #{boolean_column_name}) VALUES (NEW.id, NEW.#{parent_column_name}, TRUE);
+          ELSEIF existing_record.#{foreign_column} <> NEW.id THEN
+            RAISE EXCEPTION '"%" value is already used by #{parent_table_name} ID %', NEW.#{parent_column_name}, existing_record.#{foreign_column};
+          ELSEIF existing_record.#{boolean_column_name} = FALSE THEN
+            UPDATE #{table_name} SET #{boolean_column_name} = TRUE WHERE id = existing_record.id;
+          END IF;
+
+          RETURN NEW;
+        END;
+      $$;
+
+      CREATE FUNCTION #{function_name2}() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF OLD IS NOT NULL AND OLD.#{boolean_column_name} = TRUE AND NEW.#{foreign_column} <> OLD.#{foreign_column} THEN
+            IF NOT EXISTS(SELECT id FROM #{table_name} WHERE #{foreign_column} = OLD.#{foreign_column} AND #{boolean_column_name} = true AND id <> OLD.id LIMIT 1) THEN
+              RAISE EXCEPTION 'Set another primary phone for previous owner before changing #{column_name} #{foreign_column}';
+            END IF;
+          END IF;
+          IF NOT EXISTS(SELECT id FROM #{table_name} WHERE #{foreign_column} = NEW.#{foreign_column} LIMIT 1) THEN
+              NEW.#{boolean_column_name} = TRUE;
+          ELSIF NEW.#{boolean_column_name} = TRUE AND (OLD IS NULL OR OLD.#{boolean_column_name} = FALSE) THEN
+            UPDATE #{table_name} SET #{boolean_column_name} = FALSE WHERE #{foreign_column} = NEW.#{foreign_column} AND #{boolean_column_name} = TRUE;
+          END IF;
+          RETURN NEW;
+        END;
+      $$;
+
+      CREATE FUNCTION #{function_name3}() RETURNS trigger LANGUAGE plpgsql AS $$
+      DECLARE table_owner #{parent_table_name}%ROWTYPE;
+        BEGIN
+          IF NEW.#{boolean_column_name} = TRUE THEN
+            SELECT id, #{parent_column_name} INTO table_owner FROM #{parent_table_name} WHERE id = NEW.#{foreign_column} LIMIT 1;
+            IF table_owner.#{parent_column_name} IS NULL OR table_owner.#{parent_column_name} <> NEW.#{column_name} THEN
+              UPDATE #{parent_table_name} SET #{parent_column_name} = NEW.#{column_name} WHERE id = NEW.#{foreign_column};
+            END IF;
+          END IF;
+          RETURN NULL;
+        END;
+      $$;
+
+      CREATE TRIGGER _##{(rand(10) + 30).to_s.rjust(3, ?0)}_sync_#{column_name[0..15]}_afr_#{parent_table_name[0..15]}_i AFTER INSERT ON #{parent_table_name} FOR EACH ROW EXECUTE PROCEDURE #{function_name1}();
+      CREATE TRIGGER _##{(rand(10) + 30).to_s.rjust(3, ?0)}_sync_#{column_name[0..15]}_afr_#{parent_table_name[0..15]}_u AFTER UPDATE ON #{parent_table_name} FOR EACH ROW EXECUTE PROCEDURE #{function_name1}();
+
+      CREATE TRIGGER _##{(rand(10) + 30).to_s.rjust(3, ?0)}_sync_#{parent_column_name}_bfr_i BEFORE INSERT ON #{table_name} FOR EACH ROW EXECUTE PROCEDURE #{function_name2}();
+      CREATE TRIGGER _##{(rand(10) + 30).to_s.rjust(3, ?0)}_sync_#{parent_column_name}_bfr_u BEFORE UPDATE ON #{table_name} FOR EACH ROW EXECUTE PROCEDURE #{function_name2}();
+
+      CREATE TRIGGER _##{(rand(10) + 50).to_s.rjust(3, ?0)}_sync_#{parent_table_name}_#{parent_column_name}_bfr_i AFTER INSERT ON #{table_name} FOR EACH ROW EXECUTE PROCEDURE #{function_name3}();
+      CREATE TRIGGER _##{(rand(10) + 50).to_s.rjust(3, ?0)}_sync_#{parent_table_name}_#{parent_column_name}_bfr_u AFTER UPDATE ON #{table_name} FOR EACH ROW EXECUTE PROCEDURE #{function_name3}();
+    SQL
+  end
+end

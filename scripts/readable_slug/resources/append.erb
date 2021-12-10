@@ -1,30 +1,44 @@
 class AddHumanReadableSlugGenerationTo##{tablename.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
   def up
-    add_column :prefix_sequence_list, :##{tablename}_sequence_reseted, :boolean, default: false
     add_column :##{tablename}, :slug, :string
+    update_existing_records(:##{tablename}, '##{slug_prefix}')
 
-    execute(
-      <<~SQL
-        CREATE SEQUENCE ##{tablename}_daily_seq OWNED BY prefix_sequence_list.key;
-
-        CREATE OR REPLACE FUNCTION human_slug_for_##{tablename}() RETURNS TRIGGER AS $$
-        BEGIN
-          SELECT generate_slug('##{tablename}'::regclass, 'CC', '##{tablename}_daily_seq') INTO NEW.slug;
-          RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
-
-        CREATE TRIGGER generate_human_slug_for_##{tablename}_on_insert BEFORE INSERT ON ##{tablename}
-        FOR EACH ROW EXECUTE PROCEDURE human_slug_for_##{tablename}();
-      SQL
-    )
-
-    execute(
-      <<~SQL
-        UPDATE ##{tablename} SET slug = CONCAT('##{slug_prefix}-AAA-', id);
-      SQL
-    )
+    generate_slug(:##{tablename}, '##{slug_prefix}')
 
     change_column_null :##{tablename}, :slug, false
+    add_index :##{tablename}, [:slug], unique: true, name: 'slug_index'
+  end
+
+  private
+
+  def update_existing_records(table_name, prefix)
+    execute <<~SQL
+      UPDATE #{table_name} SET slug = CONCAT('#{prefix}-AAA-', id);
+    SQL
+  end
+
+  def generate_slug(table_name, prefix)
+    execute <<~SQL
+      INSERT INTO prefix_letters("table_name", "key") VALUES('#{table_name}', '#{prefix}');
+    SQL
+
+    add_column :prefix_sequence_list, "#{table_name}_sequence_reseted", :boolean, default: false
+
+    execute <<~SQL
+      CREATE SEQUENCE #{table_name}_daily_seq OWNED BY prefix_sequence_list.key;
+
+      CREATE OR REPLACE FUNCTION human_slug_for_#{table_name}() RETURNS TRIGGER AS $$
+      BEGIN
+        SELECT generate_slug('#{table_name}'::regclass, '#{table_name}_daily_seq') INTO NEW.slug;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      CREATE TRIGGER _##{(rand(10) + 20).to_s.rjust(3, ?0)}_gen_slug_for_#{table_name}_on_i BEFORE INSERT ON #{table_name}
+        FOR EACH ROW EXECUTE PROCEDURE human_slug_for_#{table_name}();
+
+      CREATE TRIGGER _##{(rand(50) + 200).to_s.rjust(3, ?0)}_restrict_slug BEFORE UPDATE OF slug ON #{table_name}
+        FOR EACH ROW WHEN (NEW.slug <> OLD.slug) EXECUTE PROCEDURE restrict_slug_update();
+    SQL
   end
 end

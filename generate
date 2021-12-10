@@ -55,7 +55,7 @@ class GenerateJob < Thor
       append_to_file MAINFILE, <<~TEXT
         when :#{c[:name]} then
           begin
-            #{c[:content]}
+      #{c[:content].strip}
           end while false
       TEXT
     end

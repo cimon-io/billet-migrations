@@ -1,0 +1,7 @@
+parent_table = ask('Set parent table which should contains count column: ').strip.presence || say("Table name can't be blank.") || break
+child_table = ask('Set a table with foreign key which one count of records should be calculated: ').strip.presence || say("Table name can't be blank.") || break
+foreign_column = ask("Set foreign column (by default is '#{parent_table.singularize}_id'): ").strip.presence || "#{parent_table.singularize}_id"
+child_column = ask("Set child column where value will be cached: ").strip.presence || break
+parent_column = ask("Set parent column where value will be fetched: ").strip.presence || break
+
+create_file "db/migrate/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}_cache_column_#{parent_column}_from_#{parent_table}_to_#{child_table}.rb", "<%= files['content.erb'] %>"

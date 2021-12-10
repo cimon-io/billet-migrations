@@ -1,0 +1,41 @@
+class AddSumСacheTo##{parent_table.camelcase}For##{child_table.camelcase}##{sum_column.camelcase} < ActiveRecord::Migration[##{Rails::VERSION::MAJOR}.##{Rails::VERSION::MINOR}]
+  def up
+    sum_trigger(parent_table: :##{parent_table}, child_table: :##{child_table}, counter_column: :##{counter_column}, foreign_column: :##{foreign_column})
+    sum_trigger(parent_table: :##{parent_table}, child_table: :##{child_table}, sum_column: :##{sum_column}, foreign_column: :##{foreign_column}, child_column:)
+  end
+
+  private
+
+  def sum_trigger(parent_table:, child_table:, sum_column:, foreign_column:, child_column:)
+    function_name = "upd_#{parent_table[0..15]}_#{child_table[0..15]}_sum"
+    execute %{
+      CREATE OR REPLACE FUNCTION #{function_name}_on_insert() RETURNS TRIGGER AS $$
+      BEGIN
+        UPDATE #{parent_table} SET #{sum_column} = COALESCE((SELECT SUM(#{child_column}) FROM #{child_table} GROUP BY #{foreign_column} HAVING #{foreign_column} = NEW.#{foreign_column}), 0) WHERE (#{parent_table}.id = NEW.#{foreign_column});
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      CREATE OR REPLACE FUNCTION #{function_name}_on_delete() RETURNS TRIGGER AS $$
+      BEGIN
+        UPDATE #{parent_table} SET #{sum_column} = COALESCE((SELECT SUM(#{child_column}) FROM #{child_table} GROUP BY #{foreign_column} HAVING #{foreign_column} = OLD.#{foreign_column}), 0) WHERE (#{parent_table}.id = OLD.#{foreign_column});
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      CREATE OR REPLACE FUNCTION #{function_name}_on_update() RETURNS TRIGGER AS $$
+      BEGIN
+        IF NEW.#{foreign_column} <> OLD.#{foreign_column} THEN
+          UPDATE #{parent_table} SET #{sum_column} = COALESCE((SELECT SUM(#{child_column}) FROM #{child_table} GROUP BY #{foreign_column} HAVING #{foreign_column} = NEW.#{foreign_column}), 0) WHERE (#{parent_table}.id = NEW.#{foreign_column});
+          UPDATE #{parent_table} SET #{sum_column} = COALESCE((SELECT SUM(#{child_column}) FROM #{child_table} GROUP BY #{foreign_column} HAVING #{foreign_column} = OLD.#{foreign_column}), 0) WHERE (#{parent_table}.id = OLD.#{foreign_column});
+        END IF;
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      CREATE TRIGGER _##{(rand(10) + 10).to_s.rjust(3, ?0)}_#{function_name}_on_insert AFTER INSERT ON #{child_table} FOR EACH ROW EXECUTE PROCEDURE #{function_name}_on_i();
+      CREATE TRIGGER _##{(rand(10) + 10).to_s.rjust(3, ?0)}_#{function_name}_on_update AFTER UPDATE ON #{child_table} FOR EACH ROW EXECUTE PROCEDURE #{function_name}_on_u();
+      CREATE TRIGGER _##{(rand(10) + 10).to_s.rjust(3, ?0)}_#{function_name}_on_delete AFTER DELETE ON #{child_table} FOR EACH ROW EXECUTE PROCEDURE #{function_name}_on_d();
+    }
+  end
+end
